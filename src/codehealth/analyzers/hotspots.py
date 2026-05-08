@@ -164,35 +164,35 @@ def _apply_severity(metrics: FileMetrics):
         metrics.severity = "Low"
 
 def _add_validation_questions(metrics: FileMetrics):
-    """Adiciona perguntas de investigação baseadas no papel do arquivo."""
+    """Adiciona perguntas de investigação com linguagem simples e direta."""
     if metrics.is_gateway:
         metrics.validation_questions.extend([
-            "A lógica de negócio está centralizada aqui ou apenas orquestração?",
-            "As dependências importadas são coesas com o propósito do gateway?"
+            "Este arquivo contém regras de negócio ou ele só 'passa a bola' para outros serviços?",
+            "As coisas que este arquivo importa fazem sentido para um organizador/gateway?"
         ])
     if metrics.is_serializer:
         metrics.validation_questions.extend([
-            "Existe lógica de domínio vazando para os serializers?",
-            "A complexidade de validação é intrínseca ao domínio ou procedural?"
+            "Tem cálculos ou regras complicadas aqui que deveriam estar no modelo ou service?",
+            "A validação de dados aqui é simples ou está virando um labirinto de códigos?"
         ])
     if metrics.is_config:
         metrics.validation_questions.extend([
-            "Existem regras de negócio misturadas com a infraestrutura?",
-            "A inicialização está explícita ou baseada em efeitos colaterais mágicos?"
+            "Tem regra de negócio (o 'como o app funciona') misturada com configuração de infraestrutura?",
+            "A configuração é clara ou depende de 'mágicas' difíceis de rastrear?"
         ])
     if metrics.is_enum_mapping:
         metrics.validation_questions.extend([
-            "A complexidade é algorítmica ou apenas dados declarativos?",
-            "Este mapeamento é instável ou muda por razões externas?"
+            "Este arquivo é só uma tabela de consulta ou tem lógica complexa escondida?",
+            "Os dados aqui são estáveis ou mudam toda hora por motivos externos?"
         ])
     if metrics.signals.get("god_object"):
         metrics.validation_questions.extend([
-            "Quantas responsabilidades distintas este arquivo possui?",
-            "Domínios não relacionados estão misturados aqui?",
-            "A API pública é excessivamente ampla?"
+            "Este arquivo está tentando fazer o trabalho de vários arquivos ao mesmo tempo?",
+            "Se você dividisse este arquivo em partes menores, o código ficaria mais limpo?",
+            "A lista de funções deste arquivo é grande demais para uma pessoa só entender?"
         ])
     if metrics.signals.get("temporal_coupling"):
         metrics.validation_questions.extend([
-            "O co-change é causado por fluxo de trabalho compartilhado ou duplicação de regras?",
-            "Existe uma abstração faltando que unificaria essas mudanças?"
+            "Por que esses arquivos sempre mudam juntos? Eles estão 'copiando' a lógica um do outro?",
+            "Daria para criar uma regra única que servisse para os dois, em vez de mudar ambos sempre?"
         ])
