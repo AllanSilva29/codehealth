@@ -48,9 +48,18 @@ Representa o "peso" cognitivo médio para entender um arquivo no projeto.
 """
 )
 def scan(
-    repo_path: str = typer.Argument(..., help="Caminho para o repositório Git"),
-    output: str = typer.Option("report.json", "--output", "-o", help="Arquivo de saída JSON")
+    repo_path: str = typer.Argument(None, help="Caminho para o repositório Git"),
+    output: str = typer.Option("report.json", "--output", "-o", help="Arquivo de saída JSON"),
+    guide: bool = typer.Option(False, "--guide", help="Mostra um guia de como investigar as perguntas de validação")
 ):
+    if guide:
+        _display_investigation_guide()
+        raise typer.Exit()
+
+    if not repo_path:
+        console.print("[red]Erro:[/red] Você deve fornecer o caminho do repositório ou usar --guide.")
+        raise typer.Exit(code=1)
+
     if not os.path.exists(repo_path):
         console.print(f"[red]Erro:[/red] Caminho {repo_path} não encontrado.")
         raise typer.Exit(code=1)
@@ -133,6 +142,59 @@ def _finalize_report_metrics(report: RepositoryReport):
     if report.files:
         total_complexity = sum(f.cyclomatic_sum for f in report.files.values())
         report.avg_complexity = round(total_complexity / len(report.files), 2)
+
+def _display_investigation_guide():
+    """Exibe um guia detalhado sobre como responder às perguntas de investigação."""
+    from rich.panel import Panel
+    from rich.markdown import Markdown
+
+    guide_text = """
+
+Este guia ajuda você a responder às perguntas de validação geradas pelo scan.
+
+---
+
+### Gateways e Orquestradores
+Gateways recebem uma requisição e a direcionam para os lugares certos, sem processar a lógica pesada sozinhos.
+**Onde são usados:** Em Views de API (Django/FastAPI), Controllers, ou módulos que integram com serviços externos (ex: Gateway de Pagamento).
+
+**P: Este arquivo contém regras de negócio ou ele só 'passa a bola'?**
+- **O que checar:** Procure por `if/else` que decidem regras do produto (ex: cálculos de desconto, validação de status). Se houver muito disso, o código deveria estar em um *Service*.
+- **O que é bom:** O arquivo apenas chama métodos de outros objetos e retorna o resultado.
+
+**P: As coisas que este arquivo importa fazem sentido?**
+- **O que checar:** Veja os `imports`. Se um Gateway importa modelos de banco de dados diretamente ou bibliotecas de baixo nível, ele está fazendo coisa demais.
+
+---
+
+### Serializers e Schemas
+**P: Tem cálculos ou regras complicadas aqui?**
+- **O que checar:** Serializers devem apenas transformar dados. Se houver métodos `.save()` ou `.create()` com muita lógica, ou validações que consultam o banco repetidamente, está errado.
+
+**P: A validação é simples ou um labirinto?**
+- **O que checar:** Se um método de validação tem mais de 10-15 linhas ou muitos `if` aninhados, a regra é complexa demais para morar no Serializer.
+
+---
+
+### Configurações
+**P: Tem regra de negócio misturada com infraestrutura?**
+- **O que checar:** Arquivos de config devem ter apenas variáveis e chaves. Se houver funções que decidem comportamentos baseados em permissões ou datas, retire de lá.
+
+---
+
+### God Objects (Arquivos Gigantes)
+**P: Este arquivo está fazendo o trabalho de vários ao mesmo tempo?**
+- **O que checar:** Se o arquivo lida com "Usuário", "Email" e "Pagamento" no mesmo lugar, ele tem responsabilidades demais.
+- **Dica:** Tente agrupar as funções por tema. Se você conseguir criar 3 arquivos novos com nomes claros, a divisão é necessária.
+
+---
+
+### Dependência Temporal (Sempre mudam juntos)
+**P: Eles estão 'copiando' a lógica um do outro?**
+- **O que checar:** Veja se os arquivos têm trechos de código idênticos. Se você altera um e esquece o outro, o sistema quebra?
+- **Solução:** Extraia a lógica repetida para um arquivo comum (utilitário ou base).
+"""
+    console.print(Panel(Markdown(guide_text), title="Guia de Investigação", expand=False))
 
 if __name__ == "__main__":
     app()
