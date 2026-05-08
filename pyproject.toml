@@ -1,0 +1,24 @@
+[project]
+name = "codehealth"
+version = "0.1.0"
+description = "A multi-layer code health analysis pipeline"
+authors = [
+    { name = "Neo Allan", email = "neo-allan@example.com" }
+]
+dependencies = [
+    "pydriller>=2.6.0",
+    "radon>=6.0.1",
+    "networkx>=3.2.1",
+    "tree-sitter>=0.21.3",
+    "tree-sitter-languages>=1.10.2",
+    "typer>=0.12.3",
+    "rich>=13.7.1",
+]
+requires-python = ">=3.10"
+
+[project.scripts]
+codehealth = "codehealth.cli:app"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
