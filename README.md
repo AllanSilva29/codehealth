@@ -1,6 +1,6 @@
 # Code Health Analysis Pipeline 🚀
 
-Uma ferramenta poderosa para analisar a "saúde" do seu código Python, identificando **Hotspots** (áreas de alto risco de manutenção) através da combinação de métricas de churn (histórico Git) e complexidade estática.
+Uma ferramenta para analisar a "saúde" do seu código Python, identificando **Hotspots** (áreas de alto risco de manutenção) através da combinação de métricas de churn (histórico Git) e complexidade estática.
 
 ## ✨ Funcionalidades
 
@@ -62,4 +62,4 @@ O pipeline classifica os arquivos em níveis de severidade baseados no **Hotspot
 - `src/codehealth/cli.py`: Ponto de entrada da aplicação.
 
 ---
-Desenvolvido por **Neo Allan**.
+Desenvolvido por **Allan Silva 29**.
