@@ -18,10 +18,18 @@ class FileMetrics:
     imports: Set[str] = field(default_factory=set)
     cycles: int = 0
     is_generated: bool = False
-
-    # Anti-patterns
     is_migration: bool = False
     is_test: bool = False
+
+    # Architectural Roles
+    is_gateway: bool = False
+    is_shared_kernel: bool = False
+    is_serializer: bool = False
+    is_config: bool = False
+    is_cli_command: bool = False
+    is_enum_mapping: bool = False
+    is_registry: bool = False
+    is_event_handler: bool = False
 
     # Graph
     fan_in: int = 0
@@ -46,6 +54,7 @@ class FileMetrics:
     cohesion_score: float = 0.0
     hotspot_score: float = 0.0
     notes: List[str] = field(default_factory=list)
+    validation_questions: List[str] = field(default_factory=list)
 
 @dataclass
 class RepositoryReport:

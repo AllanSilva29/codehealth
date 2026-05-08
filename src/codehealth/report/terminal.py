@@ -1,6 +1,7 @@
 from rich.console import Console
 from rich.table import Table
 from ..models import RepositoryReport
+from ..analyzers.classifier import get_role_name
 
 console = Console()
 
@@ -50,7 +51,8 @@ def display_summary(report: RepositoryReport):
             elif f.severity == "High": color = "orange"
             elif f.severity == "Medium": color = "yellow"
             
-            console.print(f"\n[{color}][bold]{f.path}[/bold] (Risco: {f.severity}, Confiança: {f.confidence})[/{color}]")
+            role = get_role_name(f)
+            console.print(f"\n[{color}][bold]{f.path}[/bold] ({role} | Risco: {f.severity}, Confiança: {f.confidence})[/{color}]")
             if f.reasons:
                 console.print("  [bold]Fatores de Risco (Razões):[/bold]")
                 for reason in f.reasons:
@@ -59,6 +61,10 @@ def display_summary(report: RepositoryReport):
                 console.print("  [bold]Notas Heurísticas:[/bold]")
                 for note in f.notes:
                     console.print(f"    [dim]- {note}[/dim]")
+            if f.validation_questions:
+                console.print("  [bold cyan]Perguntas de Investigação (Validação):[/bold cyan]")
+                for q in f.validation_questions:
+                    console.print(f"    [cyan]- {q}[/cyan]")
 
     console.print(f"\n[bold green]Scan concluído![/bold green] Total de arquivos analisados: {len(report.files)}")
     console.print(f"[bold blue]Complexidade Média do Projeto:[/bold blue] {report.avg_complexity}")

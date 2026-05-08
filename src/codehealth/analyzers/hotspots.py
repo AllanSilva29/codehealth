@@ -1,5 +1,6 @@
 from typing import Dict
 from ..models import FileMetrics
+from .classifier import classify_architectural_roles
 
 def calculate_hotspots(files: Dict[str, FileMetrics]):
     if not files:
@@ -8,12 +9,15 @@ def calculate_hotspots(files: Dict[str, FileMetrics]):
     max_churn = max(max((f.churn for f in files.values()), default=1), 3)
     max_complexity = max(max((f.cyclomatic_sum for f in files.values()), default=1), 30)
 
+    classify_architectural_roles(files)
+
     for metrics in files.values():
         _calculate_contextual_scores(metrics, max_churn, max_complexity)
         _generate_heuristics(metrics)
         _evaluate_confidence(metrics)
         _distinguish_risk(metrics)
         _apply_severity(metrics)
+        _add_validation_questions(metrics)
 
 def _calculate_contextual_scores(metrics: FileMetrics, max_churn: int, max_complexity: int):
     base_score = (metrics.churn / max_churn) * (metrics.cyclomatic_sum / max_complexity) * 100
@@ -37,6 +41,29 @@ def _get_contextual_multiplier(metrics: FileMetrics) -> float:
     if metrics.is_test:
         multiplier *= 0.6
         metrics.reasons.append("Arquivo exclusivo de teste (-40% de risco).")
+    
+    # Novos multiplicadores arquiteturais
+    if metrics.is_config or metrics.is_enum_mapping:
+        if metrics.cyclomatic_sum < 20:
+            multiplier *= 0.5
+            metrics.reasons.append("Configuração/Mapeamento estável e simples (-50% de risco).")
+        else:
+            multiplier *= 1.2
+            metrics.reasons.append("Configuração com lógica complexa detectada (+20% de risco).")
+
+    if metrics.is_gateway:
+        if metrics.cyclomatic_sum < 15:
+            multiplier *= 0.7
+            metrics.reasons.append("Gateway/Maestro legítimo: muita orquestração, pouca lógica interna (-30% de risco).")
+        else:
+            multiplier *= 1.3
+            metrics.reasons.append("Gateway 'Gordo': lógica de negócio vazando para o orquestrador (+30% de risco).")
+
+    if metrics.is_serializer:
+        if metrics.cyclomatic_sum > 25:
+            multiplier *= 1.4
+            metrics.reasons.append("Serializer complexo: possível vazamento de regras de domínio (+40% de risco).")
+
     return multiplier
 
 def _generate_heuristics(metrics: FileMetrics):
@@ -58,10 +85,21 @@ def _check_complexity_density(metrics: FileMetrics):
         metrics.notes.append(f"Muito código complexo (ifs/loops) espremido em poucas linhas ({complexity_density:.2f} pontos por linha). O arquivo está denso e difícil de ler.")
 
 def _check_god_object(metrics: FileMetrics):
-    if metrics.loc > 300 and metrics.cyclomatic_sum > 50:
+    is_large = metrics.loc > 300
+    is_complex = metrics.cyclomatic_sum > 50
+    
+    # Heurística de coesão simples: muitas funções com complexidade espalhada
+    has_fragmented_logic = len([f for f in metrics.functions if f.complexity > 5]) > 5
+    
+    if is_large and is_complex:
         metrics.categories.append("GOD_OBJECT")
         metrics.signals["god_object"] = True
-        metrics.notes.append(f"Arquivo gigante ({metrics.loc} linhas) fazendo coisas demais. Considere quebrar em arquivos menores.")
+        
+        if has_fragmented_logic:
+            metrics.notes.append(f"Deus ex Machina: Arquivo gigante ({metrics.loc} linhas) com lógica muito fragmentada. Parece centralizar múltiplos domínios.")
+            metrics.hotspot_score *= 1.2
+        else:
+            metrics.notes.append(f"Arquivo grande ({metrics.loc} linhas) fazendo coisas demais. Considere quebrar em serviços menores.")
 
 def _check_fan_out(metrics: FileMetrics):
     if metrics.fan_out > 15:
@@ -96,8 +134,11 @@ def _evaluate_confidence(metrics: FileMetrics):
         metrics.in_cycles
     ])
     
-    if metrics.is_test or metrics.is_migration or metrics.is_generated:
+    if metrics.is_test or metrics.is_migration or metrics.is_generated or metrics.is_config or metrics.is_enum_mapping:
         score -= 2
+        
+    if metrics.is_gateway or metrics.is_serializer:
+        score -= 1 # Framework markers reduce confidence of "pure" hotspot
         
     metrics.confidence = "High" if score >= 2 else "Medium" if score == 1 else "Low"
 
@@ -121,3 +162,37 @@ def _apply_severity(metrics: FileMetrics):
         metrics.severity = "Medium"
     else:
         metrics.severity = "Low"
+
+def _add_validation_questions(metrics: FileMetrics):
+    """Adiciona perguntas de investigação baseadas no papel do arquivo."""
+    if metrics.is_gateway:
+        metrics.validation_questions.extend([
+            "A lógica de negócio está centralizada aqui ou apenas orquestração?",
+            "As dependências importadas são coesas com o propósito do gateway?"
+        ])
+    if metrics.is_serializer:
+        metrics.validation_questions.extend([
+            "Existe lógica de domínio vazando para os serializers?",
+            "A complexidade de validação é intrínseca ao domínio ou procedural?"
+        ])
+    if metrics.is_config:
+        metrics.validation_questions.extend([
+            "Existem regras de negócio misturadas com a infraestrutura?",
+            "A inicialização está explícita ou baseada em efeitos colaterais mágicos?"
+        ])
+    if metrics.is_enum_mapping:
+        metrics.validation_questions.extend([
+            "A complexidade é algorítmica ou apenas dados declarativos?",
+            "Este mapeamento é instável ou muda por razões externas?"
+        ])
+    if metrics.signals.get("god_object"):
+        metrics.validation_questions.extend([
+            "Quantas responsabilidades distintas este arquivo possui?",
+            "Domínios não relacionados estão misturados aqui?",
+            "A API pública é excessivamente ampla?"
+        ])
+    if metrics.signals.get("temporal_coupling"):
+        metrics.validation_questions.extend([
+            "O co-change é causado por fluxo de trabalho compartilhado ou duplicação de regras?",
+            "Existe uma abstração faltando que unificaria essas mudanças?"
+        ])

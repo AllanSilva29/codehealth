@@ -16,29 +16,41 @@ from .report.terminal import display_summary
 app = typer.Typer(rich_markup_mode="rich")
 console = Console()
 
-@app.command()
+@app.command(
+    help="""
+Executa o pipeline completo de análise de saúde de código.
+
+Esta ferramenta investiga o repositório em busca de gargalos arquiteturais e sócio-técnicos.
+
+[bold]Conceitos Chave:[/bold]
+• [bold cyan]Score[/bold cyan]: Pontuação final de risco do arquivo (baseada em complexidade e histórico de alterações multiplicada por fatores contextuais).
+• [bold cyan]Severidade[/bold cyan]: Classificação do risco geral (Low, Medium, High, Critical) baseada no Score.
+• [bold cyan]Confiança[/bold cyan]: Certeza do diagnóstico (Low, Medium, High). Aumenta quando múltiplos sinais negativos corroboram o problema e diminui em arquivos como testes e código gerado.
+[bold cyan]Diagnósticos Arquiteturais:[/bold cyan]
+• [bold cyan]API Gateway[/bold cyan]: Orquestradores que podem esconder complexidade ou centralizar lógica indevida.
+• [bold cyan]Serializer/Schema[/bold cyan]: Transformadores de dados onde a lógica de domínio costuma vazar.
+• [bold cyan]Shared Kernel[/bold cyan]: Núcleos compartilhados que exigem alta estabilidade.
+• [bold cyan]Config/Mapping[/bold cyan]: Arquivos de infraestrutura com scores ajustados para evitar falsos positivos.
+
+[bold cyan]Categorias de Risco:[/bold cyan]
+  - [dim]COMPLEXITY[/dim]: Código muito denso (muita lógica espremida em poucas linhas).
+  - [dim]GOD_OBJECT[/dim]: Arquivos gigantescos centralizando responsabilidades demais.
+  - [dim]ARCHITECTURE[/dim]: Arquivos "maestros" ou orquestradores legítimos.
+  - [dim]COUPLING[/dim]: Alto acoplamento com dependências externas.
+  - [dim]TEMPORAL[/dim]: Dependências ocultas detectadas via histórico Git.
+  - [dim]SOCIO_TECHNICAL[/dim]: Gargalos de equipe e fragmentação de conhecimento.
+
+[bold]Complexidade Média do Projeto:[/bold]
+Representa o "peso" cognitivo médio para entender um arquivo no projeto.
+• [bold green]Baixa (menor que 10)[/bold green]: Projeto saudável. O código é simples, modular e fácil de testar.
+• [bold yellow]Moderada (10 até 20)[/bold yellow]: Alerta. Algumas áreas estão ficando densas; a manutenção exige mais atenção.
+• [bold red]Alta (maior que 20)[/bold red]: Perigo. O projeto possui lógica muito ramificada, difícil de debugar e com alto risco de bugs em novas alterações.
+"""
+)
 def scan(
     repo_path: str = typer.Argument(..., help="Caminho para o repositório Git"),
     output: str = typer.Option("report.json", "--output", "-o", help="Arquivo de saída JSON")
 ):
-    """
-    Executa o pipeline completo de análise de saúde de código.
-    
-    Esta ferramenta investiga o repositório em busca de gargalos arquiteturais e sócio-técnicos.
-
-    [bold]Conceitos Chave:[/bold]
-    • [cyan]Score[/cyan]: Pontuação final de risco do arquivo (baseada em complexidade e histórico de alterações multiplicada por fatores contextuais).
-    • [cyan]Severidade[/cyan]: Classificação do risco geral (Low, Medium, High, Critical) baseada no Score.
-    • [cyan]Confiança[/cyan]: Certeza do diagnóstico (Low, Medium, High). Aumenta quando múltiplos sinais negativos corroboram o problema e diminui em arquivos como testes e código gerado.
-    • [cyan]Categorias Existentes[/cyan]:
-      - [dim]COMPLEXITY[/dim]: Código muito denso (muita lógica espremida em poucas linhas).
-      - [dim]GOD_OBJECT[/dim]: Arquivos gigantescos centralizando responsabilidades demais.
-      - [dim]ARCHITECTURE[/dim]: Arquivos "maestros" ou orquestradores (importam muitos arquivos mas tem lógica simples).
-      - [dim]COUPLING[/dim]: Alto acoplamento com dependências externas atrelado a lógica complexa.
-      - [dim]TEMPORAL[/dim]: Arquivos que têm uma dependência oculta (sempre sofrem commits juntos).
-      - [dim]SOCIO_TECHNICAL[/dim]: Arquivos onde desenvolvedores demais mexem frequentemente (foco de conflitos).
-      - [dim]HOTSPOT[/dim]: Arquivos que superaram os limites de segurança da análise contextual.
-    """
     if not os.path.exists(repo_path):
         console.print(f"[red]Erro:[/red] Caminho {repo_path} não encontrado.")
         raise typer.Exit(code=1)
