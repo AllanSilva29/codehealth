@@ -1,8 +1,8 @@
-# Code Health Analysis Pipeline 🚀
+# Code Health Analysis Pipeline
 
 Uma ferramenta para analisar a "saúde" do seu código Python, identificando **Hotspots** (áreas de alto risco de manutenção) através da combinação de métricas de churn (histórico Git) e complexidade estática.
 
-## ✨ Funcionalidades
+## Funcionalidades
 
 - **Métricas de Churn:** Identifica quais arquivos mudam com mais frequência.
 - **Complexidade Ciclomática:** Analisa a dificuldade de leitura e teste das funções.
@@ -12,7 +12,7 @@ Uma ferramenta para analisar a "saúde" do seu código Python, identificando **H
 - **Interface Visual Detalhada:** Exibe tabelas de hotspots e diagnósticos acionáveis diretamente no terminal para orientar a refatoração.
 - **Recomendações Acionáveis:** Sugere extração de métodos, serviços e resolução de acoplamento com base em métricas reais.
 
-## 🛠️ Instalação
+## Instalação
 
 Certifique-se de estar com seu ambiente virtual ativo e instale as dependências:
 
@@ -26,7 +26,7 @@ As principais bibliotecas utilizadas são:
 - `NetworkX` (Grafos de dependência)
 - `Typer` & `Rich` (CLI moderna)
 
-## 🚀 Como Usar
+## Como Usar
 
 Para escanear um repositório, basta rodar o comando `scan` passando o caminho da pasta:
 
@@ -43,7 +43,7 @@ Exemplo:
 codehealth scan . --output analise_maio.json
 ```
 
-## 📊 Entendendo os Resultados
+## Entendendo os Resultados
 
 O pipeline classifica os arquivos em níveis de severidade baseados no **Hotspot Score**:
 
@@ -54,7 +54,7 @@ O pipeline classifica os arquivos em níveis de severidade baseados no **Hotspot
 | 🟡 **Medium** | Atenção necessária. Pode se tornar um problema em breve. |
 | ⚪ **Low** | Código estável e de baixa complexidade. |
 
-## 📁 Estrutura do Projeto
+## Estrutura do Projeto
 
 - `src/codehealth/analyzers`: Lógica de análise de complexidade e dependências.
 - `src/codehealth/collectors`: Extratores de dados do Git e carregamento de fontes.
