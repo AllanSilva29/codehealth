@@ -44,3 +44,26 @@ def is_generated_code(source: str) -> bool:
     ]
     header = source[:1000].lower()
     return any(indicator in header for indicator in indicators)
+
+def is_migration_code(rel_path: str, source: str) -> bool:
+    """
+    Detects if the code is a database migration.
+    """
+    path_lower = rel_path.lower()
+    if "migrations/" in path_lower or "alembic/" in path_lower:
+        return True
+    if "Django migrations" in source[:1000]:
+        return True
+    return False
+
+def is_test_code(rel_path: str) -> bool:
+    """
+    Detects if the code is a test file.
+    """
+    path_lower = rel_path.lower()
+    filename = os.path.basename(path_lower)
+    if filename.startswith("test_") or filename.endswith("_test.py"):
+        return True
+    if "tests/" in path_lower:
+        return True
+    return False

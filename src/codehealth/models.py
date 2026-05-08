@@ -18,7 +18,30 @@ class FileMetrics:
     imports: Set[str] = field(default_factory=set)
     cycles: int = 0
     is_generated: bool = False
+
+    # Anti-patterns
+    is_migration: bool = False
+    is_test: bool = False
+
+    # Graph
+    fan_in: int = 0
+    in_cycles: bool = False
+
+    # Ownership & Temporal
+    contributors: Set[str] = field(default_factory=set)
+    co_changes: Dict[str, float] = field(default_factory=dict)
+    
+    # Historical
+    historical_churn: int = 0
+    historical_complexity: int = 0
+
     severity: str = "Low"  # Low, Medium, High, Critical
+    confidence: str = "Low" # Low, Medium, High
+    reasons: List[str] = field(default_factory=list)
+
+    categories: List[str] = field(default_factory=list)
+    signals: Dict[str, bool] = field(default_factory=dict)
+
     cochange_score: float = 0.0
     cohesion_score: float = 0.0
     hotspot_score: float = 0.0
