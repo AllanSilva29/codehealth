@@ -158,5 +158,7 @@ cython_debug/
 report.json
 initial_report.json
 test_encoding.json
+test_report.json
 final_d.json
 final_report.json
+illusinfini_output.json

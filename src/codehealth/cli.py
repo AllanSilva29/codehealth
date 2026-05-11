@@ -5,9 +5,9 @@ import json
 
 from .models import FileMetrics, RepositoryReport
 from .collectors.git_history import collect_git_metrics, get_total_commits
-from .collectors.source_loader import list_python_files, load_source, is_generated_code, is_migration_code, is_test_code
-from .analyzers.complexity import analyze_complexity, get_cyclomatic_sum
-from .analyzers.dependencies import analyze_dependencies, get_fan_out
+from .collectors.source_loader import load_source
+from .engines.factory import EngineFactory
+from .engines.base import BaseEngine
 from .analyzers.hotspots import calculate_hotspots
 from .graph.analyzer import build_project_graph
 from .report.emit_json import emit_json
@@ -66,6 +66,10 @@ def scan(
 
     console.print(f"[bold blue]Iniciando scan no repositório:[/bold blue] {repo_path}")
 
+    # 0. Detecção de Engine
+    engine = EngineFactory.get_engine(repo_path)
+    console.print(f"  [yellow]>>[/yellow] Engine detectada: [bold cyan]{engine.__class__.__name__}[/bold cyan]")
+
     historical_data = _load_historical_data(output)
 
     # 1. Coleta do Git
@@ -74,9 +78,9 @@ def scan(
     total_commits = get_total_commits(repo_path)
 
     # 2. Análise de Arquivos
-    console.print("  [yellow]>>[/yellow] Analisando arquivos Python...")
+    console.print(f"  [yellow]>>[/yellow] Analisando arquivos...")
     report = RepositoryReport(total_commits=total_commits)
-    _analyze_python_files(repo_path, report, historical_data, churn_data, contributors_data, co_changes_data)
+    _analyze_files(engine, repo_path, report, historical_data, churn_data, contributors_data, co_changes_data)
 
     # 3. Grafo de Dependências
     console.print("  [yellow]>>[/yellow] Construindo Grafo de Dependências...")
@@ -84,6 +88,7 @@ def scan(
 
     # 4. Agregação e Scores
     console.print("  [yellow]>>[/yellow] Calculando Hotspots Contextuais...")
+    engine.classify_roles(report.files)
     calculate_hotspots(report.files)
     _finalize_report_metrics(report)
 
@@ -92,7 +97,7 @@ def scan(
     emit_json(report, output)
 
     # Exibição no terminal
-    display_summary(report)
+    display_summary(report, engine=engine)
 
 def _load_historical_data(output_path: str) -> dict:
     if os.path.exists(output_path):
@@ -104,25 +109,25 @@ def _load_historical_data(output_path: str) -> dict:
             pass
     return {}
 
-def _analyze_python_files(repo_path: str, report: RepositoryReport, hist_data: dict, churn_data: dict, contributors_data: dict, co_changes_data: dict):
-    python_files = list_python_files(repo_path)
-    for rel_path in python_files:
+def _analyze_files(engine: BaseEngine, repo_path: str, report: RepositoryReport, hist_data: dict, churn_data: dict, contributors_data: dict, co_changes_data: dict):
+    relevant_files = engine.list_files(repo_path)
+    for rel_path in relevant_files:
         source = load_source(repo_path, rel_path)
-        functions = analyze_complexity(source)
-        imports = analyze_dependencies(source)
+        analysis = engine.analyze_source(rel_path, source)
+        
         hist = hist_data.get(rel_path, {})
         
         metrics = FileMetrics(
             path=rel_path,
             churn=churn_data.get(rel_path, 0),
             loc=len(source.splitlines()),
-            fan_out=get_fan_out(imports),
-            cyclomatic_sum=get_cyclomatic_sum(functions),
-            functions=functions,
-            imports=imports,
-            is_generated=is_generated_code(source),
-            is_migration=is_migration_code(rel_path, source),
-            is_test=is_test_code(rel_path),
+            fan_out=analysis.get("fan_out", 0),
+            cyclomatic_sum=analysis.get("cyclomatic_sum", 0),
+            functions=analysis.get("functions", []),
+            imports=analysis.get("imports", set()),
+            is_generated=engine.is_generated_code(source),
+            is_migration=engine.is_migration_code(rel_path, source),
+            is_test=engine.is_test_code(rel_path),
             contributors=contributors_data.get(rel_path, set()),
             co_changes=co_changes_data.get(rel_path, {}),
             historical_churn=hist.get("churn", 0),

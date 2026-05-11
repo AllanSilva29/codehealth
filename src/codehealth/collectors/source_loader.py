@@ -1,25 +1,25 @@
 import os
 from typing import Dict, List
 
-def list_python_files(repo_path: str) -> List[str]:
+def list_files(repo_path: str, extension: str = ".py") -> List[str]:
     """
-    Lista todos os arquivos Python (.py) no repositório, ignorando pastas comuns de ruído.
+    Lista todos os arquivos com a extensão fornecida no repositório, ignorando pastas comuns de ruído.
     """
-    python_files = []
-    ignored_dirs = {'.git', '__pycache__', '.venv', 'venv', 'env', 'build', 'dist'}
+    found_files = []
+    ignored_dirs = {'.git', '__pycache__', '.venv', 'venv', 'env', 'build', 'dist', 'node_modules'}
     
     for root, dirs, files in os.walk(repo_path):
         # Remove diretórios ignorados
         dirs[:] = [d for d in dirs if d not in ignored_dirs]
         
         for file in files:
-            if file.endswith('.py'):
+            if file.endswith(extension):
                 full_path = os.path.join(root, file)
                 # Retorna o caminho relativo ao repo_path
                 rel_path = os.path.relpath(full_path, repo_path)
-                python_files.append(rel_path)
+                found_files.append(rel_path)
                 
-    return python_files
+    return found_files
 
 def load_source(repo_path: str, rel_path: str) -> str:
     """

@@ -1,11 +1,11 @@
 from rich.console import Console
 from rich.table import Table
 from ..models import RepositoryReport
-from ..analyzers.classifier import get_role_name
+from ..engines.base import BaseEngine
 
 console = Console()
 
-def display_summary(report: RepositoryReport):
+def display_summary(report: RepositoryReport, engine: BaseEngine = None):
     """Exibe o sumário dos resultados no terminal usando a biblioteca rich."""
     table = Table(title="Hotspots Detectados (Top 10)")
     table.add_column("Arquivo", style="cyan")
@@ -51,7 +51,7 @@ def display_summary(report: RepositoryReport):
             elif f.severity == "High": color = "orange"
             elif f.severity == "Medium": color = "yellow"
             
-            role = get_role_name(f)
+            role = engine.get_role_name(f) if engine else "Domain/Logic"
             console.print(f"\n[{color}][bold]{f.path}[/bold] ({role} | Risco: {f.severity}, Confiança: {f.confidence})[/{color}]")
             if f.reasons:
                 console.print("  [bold]Fatores de Risco (Razões):[/bold]")

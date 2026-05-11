@@ -1,15 +1,11 @@
 from typing import Dict
 from ..models import FileMetrics
-from .classifier import classify_architectural_roles
-
 def calculate_hotspots(files: Dict[str, FileMetrics]):
     if not files:
         return
 
     max_churn = max(max((f.churn for f in files.values()), default=1), 3)
     max_complexity = max(max((f.cyclomatic_sum for f in files.values()), default=1), 30)
-
-    classify_architectural_roles(files)
 
     for metrics in files.values():
         _calculate_contextual_scores(metrics, max_churn, max_complexity)
