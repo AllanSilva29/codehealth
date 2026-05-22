@@ -11,14 +11,28 @@ def calculate_hotspots(files: Dict[str, FileMetrics]):
         _calculate_contextual_scores(metrics, max_churn, max_complexity)
         _generate_heuristics(metrics)
         _evaluate_confidence(metrics)
-        _distinguish_risk(metrics)
+        _distinguish_risk(metrics, max_churn, max_complexity)
         _apply_severity(metrics)
         _add_validation_questions(metrics)
 
 def _calculate_contextual_scores(metrics: FileMetrics, max_churn: int, max_complexity: int):
     base_score = (metrics.churn / max_churn) * (metrics.cyclomatic_sum / max_complexity) * 100
     multiplier = _get_contextual_multiplier(metrics)
+    
+    if metrics.cyclomatic_sum > metrics.historical_complexity:
+        metrics.historical_complexity = metrics.cyclomatic_sum
+        
+    if metrics.historical_complexity > 0 and metrics.cyclomatic_sum < metrics.historical_complexity:
+        refactor_factor = metrics.cyclomatic_sum / metrics.historical_complexity
+        refactor_factor = max(refactor_factor, 0.1)
+        multiplier *= refactor_factor
+        metrics.reasons.append(
+            f"Refatoração recente detectada: complexidade ciclomática reduzida de {metrics.historical_complexity} para {metrics.cyclomatic_sum} (-{round((1 - refactor_factor) * 100)}% de risco)."
+        )
+        
     metrics.hotspot_score = base_score * multiplier
+
+
 
 def _get_contextual_multiplier(metrics: FileMetrics) -> float:
     multiplier = 1.0
@@ -75,7 +89,8 @@ def _generate_heuristics(metrics: FileMetrics):
 def _check_complexity_density(metrics: FileMetrics):
     loc = max(metrics.loc, 1)
     complexity_density = metrics.cyclomatic_sum / loc
-    if complexity_density > 0.15 and metrics.loc > 100:
+    # Flexibiliza o limiar de LOC se a densidade for muito alta (> 0.25)
+    if complexity_density > 0.15 and (metrics.loc > 100 or complexity_density > 0.25):
         metrics.categories.append("COMPLEXITY")
         metrics.signals["high_density"] = True
         metrics.notes.append(f"Muito código complexo (ifs/loops) espremido em poucas linhas ({complexity_density:.2f} pontos por linha). O arquivo está denso e difícil de ler.")
@@ -138,9 +153,10 @@ def _evaluate_confidence(metrics: FileMetrics):
         
     metrics.confidence = "High" if score >= 2 else "Medium" if score == 1 else "Low"
 
-def _distinguish_risk(metrics: FileMetrics):
-    high_comp = metrics.cyclomatic_sum > 30 or metrics.signals.get("god_object", False)
-    high_churn = metrics.churn > 15
+def _distinguish_risk(metrics: FileMetrics, max_churn: int, max_complexity: int):
+    # Usa limiares absolutos ou relativos (Top 20% do projeto)
+    high_comp = metrics.cyclomatic_sum > 30 or metrics.signals.get("god_object", False) or metrics.cyclomatic_sum >= (max_complexity * 0.8)
+    high_churn = metrics.churn > 15 or metrics.churn >= (max_churn * 0.8)
     
     if high_comp and not high_churn:
         metrics.reasons.append("Risco Estrutural: Arquivo com código muito complexo, mas pelo menos ele quase não sofre alterações (estável).")
@@ -148,6 +164,8 @@ def _distinguish_risk(metrics: FileMetrics):
         metrics.reasons.append("Risco Operacional: Arquivo muda com muita frequência. Pode indicar que esse código é um gargalo na equipe ou a regra nunca estabiliza.")
     elif high_comp and high_churn:
         metrics.reasons.append("Risco Crítico: Pior cenário possível. O código é muito difícil de entender e ainda por cima está sendo alterado o tempo todo.")
+    elif metrics.hotspot_score >= 50:
+        metrics.reasons.append(f"Risco Contextual: Embora não atinja limiares extremos, este arquivo é um dos mais complexos ({metrics.cyclomatic_sum}) e alterados ({metrics.churn}) deste projeto.")
 
 def _apply_severity(metrics: FileMetrics):
     if metrics.hotspot_score >= 80:
@@ -191,4 +209,14 @@ def _add_validation_questions(metrics: FileMetrics):
         metrics.validation_questions.extend([
             "Por que esses arquivos sempre mudam juntos? Eles estão 'copiando' a lógica um do outro?",
             "Daria para criar uma regra única que servisse para os dois, em vez de mudar ambos sempre?"
+        ])
+    if metrics.signals.get("high_density"):
+        metrics.validation_questions.extend([
+            "Este código está muito 'compacto'? Tente extrair blocos de lógica (como ifs aninhados ou loops longos) para funções menores e bem nomeadas.",
+            "A leitura flui bem ou você precisa parar para decifrar o que cada linha faz?"
+        ])
+    if metrics.severity == "Critical":
+        metrics.validation_questions.extend([
+            "Este arquivo é o 'coração' de um problema recorrente? Se ele muda tanto e é complexo, talvez a arquitetura ao redor dele precise de uma revisão profunda.",
+            "Considere aplicar o Princípio da Responsabilidade Única (SRP): este arquivo tem apenas UM motivo para mudar?"
         ])

@@ -15,14 +15,14 @@ def classify_architectural_roles(files: Dict[str, FileMetrics]):
         if any(x in path_lower for x in ["settings.py", "config/", "configuration", "setup.py", "bootstrap"]):
             metrics.is_config = True
             
-        # 2. API Gateway / Orchestrators
-        if any(x in path_lower for x in ["gateway", "proxy", "facade", "orchestrator", "api/"]):
-            if not metrics.is_test:
-                metrics.is_gateway = True
-                
         # 3. Serializers & Schemas
         if any(x in path_lower for x in ["serializer", "schema", "dto", "marshmallow", "pydantic"]):
             metrics.is_serializer = True
+            
+        # 2. API Gateway / Orchestrators
+        if any(x in path_lower for x in ["gateway", "proxy", "facade", "orchestrator", "api/"]):
+            if not metrics.is_test and not metrics.is_serializer:
+                metrics.is_gateway = True
             
         # 4. CLI & Management Commands
         if any(x in path_lower for x in ["cli.py", "commands/", "management/commands/", "task/"]):

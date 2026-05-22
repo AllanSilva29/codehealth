@@ -45,7 +45,8 @@ def display_summary(report: RepositoryReport, engine: BaseEngine = None):
 
     console.print("\n[bold underline]Diagnóstico Contextual Detalhado:[/bold underline]")
     for f in sorted_files:
-        if f.reasons or f.notes:
+        # Mostra se tiver notas/razões OU se for um risco alto (Top 10 Critical/High)
+        if f.reasons or f.notes or f.severity in ["Critical", "High"]:
             color = "white"
             if f.severity == "Critical": color = "red"
             elif f.severity == "High": color = "orange"
@@ -53,6 +54,10 @@ def display_summary(report: RepositoryReport, engine: BaseEngine = None):
             
             role = engine.get_role_name(f) if engine else "Domain/Logic"
             console.print(f"\n[{color}][bold]{f.path}[/bold] ({role} | Risco: {f.severity}, Confiança: {f.confidence})[/{color}]")
+            
+            if not f.reasons and not f.notes:
+                console.print("  [dim]- Arquivo identificado como hotspot de risco devido à combinação de complexidade e churn relativo ao projeto.[/dim]")
+            
             if f.reasons:
                 console.print("  [bold]Fatores de Risco (Razões):[/bold]")
                 for reason in f.reasons:
@@ -62,7 +67,7 @@ def display_summary(report: RepositoryReport, engine: BaseEngine = None):
                 for note in f.notes:
                     console.print(f"    [dim]- {note}[/dim]")
             if f.validation_questions:
-                console.print("  [bold cyan]Perguntas de Investigação (Validação):[/bold cyan]")
+                console.print("  [bold cyan]Dicas de Resolução / Investigação:[/bold cyan]")
                 for q in f.validation_questions:
                     console.print(f"    [cyan]- {q}[/cyan]")
 

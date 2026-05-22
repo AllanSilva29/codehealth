@@ -13,10 +13,11 @@ from .graph.analyzer import build_project_graph
 from .report.emit_json import emit_json
 from .report.terminal import display_summary
 
-app = typer.Typer(rich_markup_mode="rich")
+app = typer.Typer(rich_markup_mode="rich", help="Ferramenta de análise de saúde de código.")
 console = Console()
 
 @app.command(
+    name="scan",
     help="""
 Executa o pipeline completo de análise de saúde de código.
 
@@ -131,7 +132,7 @@ def _analyze_files(engine: BaseEngine, repo_path: str, report: RepositoryReport,
             contributors=contributors_data.get(rel_path, set()),
             co_changes=co_changes_data.get(rel_path, {}),
             historical_churn=hist.get("churn", 0),
-            historical_complexity=hist.get("cyclomatic_sum", 0)
+            historical_complexity=hist.get("historical_complexity", 0) or hist.get("cyclomatic_sum", 0)
         )
         report.files[rel_path] = metrics
 
@@ -147,6 +148,10 @@ def _finalize_report_metrics(report: RepositoryReport):
     if report.files:
         total_complexity = sum(f.cyclomatic_sum for f in report.files.values())
         report.avg_complexity = round(total_complexity / len(report.files), 2)
+
+@app.command(name="guide", help="Mostra o guia de investigação.")
+def guide_cmd():
+    _display_investigation_guide()
 
 def _display_investigation_guide():
     """Exibe um guia detalhado sobre como responder às perguntas de investigação."""
